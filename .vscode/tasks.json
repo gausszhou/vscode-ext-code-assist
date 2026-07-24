@@ -35,6 +35,14 @@
 				"npm: watch-tests"
 			],
 			"problemMatcher": []
+		},
+		{
+			"type": "npm",
+			"script": "build:prepare",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "npm: build:prepare",
+			"detail": "pnpm i && pnpm run build:webview"
 		}
 	]
 }
