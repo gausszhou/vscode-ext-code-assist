@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.21.1",
-    "code-assist-rpc": "workspace:*",
     "loglevel": "^1.9.2",
     "openai": "^6.47.0",
     "winston": "^3.19.0",

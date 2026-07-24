@@ -1,21 +1,21 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { EnumStorageKey } from './constants';
 import { useProviderStore } from './useProviderStore';
+import { chatService } from '@/acp';
 
 export const useSettingStore = defineStore('setting', () => {
   const providerStore = useProviderStore();
-  const currentModelHash = ref(localStorage.getItem(EnumStorageKey.CurrentModelHash) ?? '');
-  const summaryModelHash = ref(localStorage.getItem(EnumStorageKey.SummaryModelHash) ?? '');
+  const currentModelHash = ref('');
+  const summaryModelHash = ref('');
 
-  const setCurrentModelHash = (value: string) => {
+  const setCurrentModelHash = async (value: string) => {
     currentModelHash.value = value;
-    localStorage.setItem(EnumStorageKey.CurrentModelHash, value);
+    await chatService.setSettings({ currentModelHash: value });
   };
 
-  const setSummaryModelHash = (value: string) => {
+  const setSummaryModelHash = async (value: string) => {
     summaryModelHash.value = value;
-    localStorage.setItem(EnumStorageKey.SummaryModelHash, value);
+    await chatService.setSettings({ summaryModelHash: value });
   };
 
   const getModelParams = (modelHash: string) => {
@@ -39,11 +39,18 @@ export const useSettingStore = defineStore('setting', () => {
     };
   };
 
+  const init = async () => {
+    const settings = await chatService.getSettings(['currentModelHash', 'summaryModelHash']);
+    if (settings.currentModelHash) currentModelHash.value = settings.currentModelHash as string;
+    if (settings.summaryModelHash) summaryModelHash.value = settings.summaryModelHash as string;
+  };
+
   return {
     currentModelHash,
     setCurrentModelHash,
     summaryModelHash,
     setSummaryModelHash,
     getModelParams,
+    init,
   };
 });

@@ -141,7 +141,14 @@ const handleChatRequest = async (messages: ChatMessage[]) => {
   abortController = new AbortController();
   queueRender = new QueueRender();
   const { baseURL, apiKey, model, provider } = settingStore.getModelParams(settingStore.currentModelHash);
-  const currentConversationId = session.conversationId.value;
+  let currentConversationId = session.conversationId.value;
+
+  // 确保 ACP session 已创建
+  if (!currentConversationId) {
+    currentConversationId = await chatService.initSession({ baseURL, apiKey, model, provider });
+    await session.linkSessionId(currentConversationId);
+  }
+
   deleteLatestMessage(currentConversationId);
   currentMessage.value = getLatestMessage(currentConversationId);
   currentMessage.value.model = model;
@@ -176,6 +183,9 @@ const handleChating = (result: IChatChunkMerge) => {
   if (result.type === 'content') {
     botMessage.content += result.data || '';
   }
+  if (result.startTime !== undefined) botMessage.startTime = result.startTime;
+  if (result.loadTime !== undefined) botMessage.loadTime = result.loadTime;
+  if (result.endTime !== undefined) botMessage.endTime = result.endTime;
   if (currentMessage.value.conversationId === result.conversationId) {
     currentMessage.value = structuredClone(botMessage);
   }
@@ -184,6 +194,9 @@ const handleChating = (result: IChatChunkMerge) => {
 // AI 结束回答
 const handleChatEnd = async (result: IChatChunkMerge) => {
   const botMessage = getLatestMessage(result.conversationId);
+  if (result.startTime !== undefined) botMessage.startTime = result.startTime;
+  if (result.loadTime !== undefined) botMessage.loadTime = result.loadTime;
+  if (result.endTime !== undefined) botMessage.endTime = result.endTime;
   // 保存到 Agent
   const msgList = [...currentMessageList.value, botMessage];
   await chatService.saveSession({

@@ -4,6 +4,14 @@ import { chatRpcClient, type ProviderConfig } from './chat-rpc-client'
 export type { ProviderConfig }
 
 class ChatService {
+  initSession(config: ProviderConfig): Promise<string> {
+    return chatRpcClient.initSession(config)
+  }
+
+  getCurrentSessionId(): string | null {
+    return chatRpcClient.getCurrentSessionId()
+  }
+
   models(params: IProviderParams) {
     return chatRpcClient.models(params)
   }
@@ -60,6 +68,22 @@ class ChatService {
 
   summarizeSession(sessionId: string, baseURL: string, apiKey: string, model: string) {
     return chatRpcClient.summarizeSession(sessionId, baseURL, apiKey, model)
+  }
+
+  listProviders() {
+    return chatRpcClient.listProviders()
+  }
+
+  saveProviders(providers: unknown[]) {
+    return chatRpcClient.saveProviders(providers)
+  }
+
+  getSettings(keys: string[]) {
+    return chatRpcClient.getSettings(keys)
+  }
+
+  setSettings(values: Record<string, unknown>) {
+    return chatRpcClient.setSettings(values)
   }
 }
 

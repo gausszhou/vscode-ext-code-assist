@@ -14,7 +14,7 @@ Build commands have dependencies — run in this order:
 
 ```bash
 pnpm install
-pnpm run build:prepare   # builds rpc, then webview (must run before compile)
+pnpm run build:prepare   # builds webview (must run before compile)
 pnpm run compile          # compiles the main extension
 ```
 
@@ -23,7 +23,6 @@ pnpm run compile          # compiles the main extension
 ```
 packages/
 ├── main/       # VS Code extension host + ACP Agent (webpack bundling)
-├── rpc/        # Deprecated — old custom RPC lib (still built for compat, not used)
 └── webview/    # Vue 3 frontend + ACP Client (Vite)
 ```
 
@@ -36,9 +35,8 @@ packages/
 
 | Command | Purpose |
 |---------|---------|
-| `pnpm run build:rpc` | Build only the RPC library (deprecated, still needed for compat) |
 | `pnpm run build:webview` | Build only the webview |
-| `pnpm run build:prepare` | Build rpc + webview (fast, no bundling) |
+| `pnpm run build:prepare` | Build webview (fast, no bundling) |
 | `pnpm run compile` | Full build: prepare + webpack bundle |
 | `pnpm run watch` | Watch mode (webview + webpack watch) |
 | `pnpm run package` | Production bundle |
@@ -53,13 +51,13 @@ Test flow: `pnpm run pretest` runs `compile-tests + compile + lint` before tests
 
 - **Entry point**: `packages/main/src/extension.ts` — initializes `AgentServer` with `globalState`
 - **ACP Agent**: `packages/main/src/acp/AgentServer.ts` — handles `session/new`, `session/prompt`, `session/load`, etc.
-- **Session store**: `packages/main/src/acp/SessionStore.ts` — persists messages via VS Code Memento
+- **Session store**: `packages/main/src/acp/SessionStore.ts` — persists messages to filesystem (globalStorageUri/data/sessions/)
 - **Session**: `packages/main/src/acp/ACPSession.ts` — per-conversation state (messages, model config, abort controller)
 - **Transport**: `packages/main/src/acp/transport.ts` — wraps `webview.postMessage` as ACP `Stream`
 - **Webview provider**: `packages/main/src/views/ChatWebViewProvider.ts` — creates webview + connects Agent
 - **Commands**: All `codeAssist.*` commands registered in `extension.ts`
 - **Webview entry**: `packages/webview/src/main.ts` + `App.vue`
-- **ACP Client**: `packages/webview/src/lib/AcpClient.ts` — sends prompts, receives streaming updates
+- **ACP Client**: `packages/webview/src/acp/acp-client.ts` — sends prompts, receives streaming updates
 - **Streaming**: Agent sends `session/update` notifications during prompt processing; Client receives via `onUpdate` callback
 - **Background processing**: If webview closes mid-stream, Agent continues reading from OpenAI and stores result in SessionStore. Reopening webview and calling `session/load` replays history.
 

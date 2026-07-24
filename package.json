@@ -168,11 +168,9 @@
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
-    "build:rpc": "pnpm --filter code-assist-rpc run build",
-
     "build:webview": "pnpm --filter code-assist-webview run build",
     "build:main": "pnpm --filter code-assist-main run build",
-    "build:prepare": "pnpm i && pnpm run build:rpc && pnpm i && pnpm run build:webview",
+    "build:prepare": "pnpm i && pnpm run build:webview",
     "dev:webview": "pnpm --filter code-assist-webview run dev",
     "compile": "pnpm run build:prepare && pnpm --filter code-assist-main run compile",
     "watch": "pnpm run build:prepare && pnpm --filter code-assist-main run watch",

@@ -1,13 +1,12 @@
 import { ref } from 'vue';
 import { chatService } from '@/acp';
-import { EnumStorageKey } from './constants';
 
-const conversationId = ref<string>(localStorage.getItem(EnumStorageKey.ConversationId) || '');
+const conversationId = ref<string>('');
 const conversationTitle = ref<string>('');
 
-function setConversationId(id: string) {
+async function setConversationId(id: string) {
   conversationId.value = id;
-  localStorage.setItem(EnumStorageKey.ConversationId, id);
+  await chatService.setSettings({ conversationId: id });
 }
 
 function setConversationTitle(title: string) {
@@ -15,8 +14,15 @@ function setConversationTitle(title: string) {
 }
 
 /** 用 ACP sessionId 替换当前的本地 conversationId（首次发送消息时调用） */
-function linkSessionId(sessionId: string) {
-  setConversationId(sessionId);
+async function linkSessionId(sessionId: string) {
+  await setConversationId(sessionId);
+}
+
+async function initSession() {
+  const settings = await chatService.getSettings(['conversationId']);
+  if (settings.conversationId) {
+    conversationId.value = settings.conversationId as string;
+  }
 }
 
 export function useSession() {
@@ -26,6 +32,7 @@ export function useSession() {
     setConversationId,
     setConversationTitle,
     linkSessionId,
+    initSession,
 
     async listSessions() {
       return chatService.listSessions();

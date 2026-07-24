@@ -32,9 +32,8 @@ pnpm run lint
 ```bash
 vscode-ext-code-assist/
 ├── packages/
-│   ├── main/                    # VS Code 扩展主程序
-│   ├── code-assist-rpc/      # Webview RPC 通信库
-│   └── webview/                 # Vue 3 前端界面
+│   ├── main/                    # VS Code 扩展主程序 (ACP Agent)
+│   └── webview/                 # Vue 3 前端界面 (ACP Client)
 ```
 
 ## 技术栈

@@ -1,34 +1,25 @@
 import { createDefaultProvider, Provider } from '@/models/Provider';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { EnumStorageKey } from './constants';
-
-function loadProviders(): Provider[] {
-  const raw = localStorage.getItem(EnumStorageKey.Providers);
-  if (raw) {
-    try { return JSON.parse(raw); } catch { }
-  }
-  return [];
-}
-
-function saveProviders(providers: Provider[]) {
-  localStorage.setItem(EnumStorageKey.Providers, JSON.stringify(providers));
-}
+import { chatService } from '@/acp';
 
 export const useProviderStore = defineStore('provider', () => {
-  const providers = ref<Provider[]>(loadProviders());
+  const providers = ref<Provider[]>([]);
 
-  const setProviders = (value: Provider[]) => {
+  const setProviders = async (value: Provider[]) => {
     providers.value = value;
-    saveProviders(value);
+    await chatService.saveProviders(value);
   };
 
   const resetProviders = async () => {
-    setProviders([await createDefaultProvider()]);
+    await setProviders([await createDefaultProvider()]);
   };
 
   const init = async () => {
-    if (providers.value.length === 0) {
+    const result = await chatService.listProviders();
+    if (result && result.length > 0) {
+      providers.value = result as Provider[];
+    } else {
       await resetProviders();
     }
   };

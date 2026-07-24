@@ -36,11 +36,11 @@ export class AgentServer {
   private disposables: vscode.Disposable[] = [];
 
   constructor(
-    globalState: vscode.Memento,
-    _secrets: vscode.SecretStorage,
+    private storage: vscode.Memento,
+    private secrets: vscode.SecretStorage,
     globalStorageUri: vscode.Uri,
   ) {
-    this.sessionStore = new SessionStore(globalState, globalStorageUri);
+    this.sessionStore = new SessionStore(storage, globalStorageUri);
     this.openaiService = new OpenAIService();
   }
 
@@ -274,6 +274,14 @@ export class AgentServer {
             return self.handleSaveSession(params as any);
           case 'code-assist/session/summarize':
             return self.handleSummarizeSession(params as any);
+          case 'code-assist/providers/list':
+            return self.handleListProviders();
+          case 'code-assist/providers/save':
+            return self.handleSaveProviders(params as any);
+          case 'code-assist/settings/get':
+            return self.handleGetSettings(params as any);
+          case 'code-assist/settings/set':
+            return self.handleSetSettings(params as any);
           default:
             return Promise.resolve({});
         }
@@ -413,6 +421,33 @@ export class AgentServer {
     }
     session.data.updatedAt = Date.now();
     await this.sessionStore.save(session.data);
+    return {};
+  }
+
+  private async handleListProviders(): Promise<Record<string, unknown>> {
+    const raw = await this.secrets.get('providers');
+    if (!raw) { return { providers: [] }; }
+    try { return { providers: JSON.parse(raw) }; }
+    catch { return { providers: [] }; }
+  }
+
+  private async handleSaveProviders(params: { providers: unknown[] }): Promise<Record<string, unknown>> {
+    await this.secrets.store('providers', JSON.stringify(params.providers));
+    return {};
+  }
+
+  private async handleGetSettings(params: { keys: string[] }): Promise<Record<string, unknown>> {
+    const result: Record<string, unknown> = {};
+    for (const key of params.keys) {
+      result[key] = this.storage.get<string>(key, '');
+    }
+    return result;
+  }
+
+  private async handleSetSettings(params: Record<string, unknown>): Promise<Record<string, unknown>> {
+    for (const [key, value] of Object.entries(params)) {
+      await this.storage.update(key, value);
+    }
     return {};
   }
 

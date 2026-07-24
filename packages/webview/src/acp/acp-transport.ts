@@ -1,7 +1,16 @@
 import type { Stream, AnyMessage } from '@agentclientprotocol/sdk'
 
-export function createWebviewClientStream(acquireVsCodeApi: () => any): Stream {
-  const vscodeApi = acquireVsCodeApi()
+let _vscodeApi: any | null = null
+
+function getVsCodeApi(): any {
+  if (!_vscodeApi) {
+    _vscodeApi = (globalThis as any).acquireVsCodeApi()
+  }
+  return _vscodeApi
+}
+
+export function createWebviewClientStream(acquireVsCodeApi?: () => any): Stream {
+  const vscodeApi = acquireVsCodeApi ? acquireVsCodeApi() : getVsCodeApi()
 
   const writable = new WritableStream<AnyMessage>({
     write(msg) {

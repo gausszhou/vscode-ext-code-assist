@@ -33,6 +33,7 @@ export class AcpClient {
   private updateCallbacks: Set<SessionUpdateCallback> = new Set()
   private infoCallbacks: Set<SessionInfoCallback> = new Set()
   private _initialized = false
+  private initPromise: Promise<void> | null = null
 
   get sessionId(): string | null {
     return this._sessionId
@@ -44,22 +45,27 @@ export class AcpClient {
 
   async initialize(): Promise<void> {
     if (this._initialized) return
+    if (this.initPromise) return this.initPromise
     if (typeof (globalThis as any).acquireVsCodeApi === 'undefined') {
       return
     }
 
-    const vscodeApi = (globalThis as any).acquireVsCodeApi()
-    const stream = createWebviewClientStream(() => vscodeApi)
+    this.initPromise = (async () => {
+      const stream = createWebviewClientStream()
 
-    this.connection = new ClientSideConnection(() => this.createClientHandler(), stream)
+      this.connection = new ClientSideConnection(() => this.createClientHandler(), stream)
 
-    await this.connection.initialize({
-      protocolVersion: 1,
-      clientCapabilities: {},
-      clientInfo: { name: 'code-assist-webview', version: '1.0.0' },
-    })
+      await this.connection.initialize({
+        protocolVersion: 1,
+        clientCapabilities: {},
+        clientInfo: { name: 'code-assist-webview', version: '1.0.0' },
+      })
 
-    this._initialized = true
+      this._initialized = true
+      this.initPromise = null
+    })()
+
+    return this.initPromise
   }
 
   private createClientHandler(): Client {
@@ -196,6 +202,36 @@ export class AcpClient {
   }): Promise<void> {
     if (!this.connection) return
     await this.connection.extMethod('code-assist/session/save', data)
+  }
+
+  // ---- Provider & Settings storage ----
+
+  async listProviders(): Promise<any> {
+    if (!this.connection) return { providers: [] }
+    try {
+      return await this.connection.extMethod('code-assist/providers/list', {})
+    } catch {
+      return { providers: [] }
+    }
+  }
+
+  async saveProviders(providers: unknown[]): Promise<void> {
+    if (!this.connection) return
+    await this.connection.extMethod('code-assist/providers/save', { providers })
+  }
+
+  async getSettings(keys: string[]): Promise<Record<string, unknown>> {
+    if (!this.connection) return {}
+    try {
+      return (await this.connection.extMethod('code-assist/settings/get', { keys })) as Record<string, unknown>
+    } catch {
+      return {}
+    }
+  }
+
+  async setSettings(values: Record<string, unknown>): Promise<void> {
+    if (!this.connection) return
+    await this.connection.extMethod('code-assist/settings/set', values)
   }
 
   async listModels(baseURL: string, apiKey: string): Promise<any> {

@@ -11,27 +11,32 @@ class ChatRpcClient {
     this.acpClient = new AcpClient()
   }
 
-  async initSession(config: ProviderConfig): Promise<void> {
+  getCurrentSessionId(): string | null {
+    return this.acpClient.sessionId
+  }
+
+  async initSession(config: ProviderConfig): Promise<string> {
     await this.acpClient.initialize()
 
     const key = this.configKey(config)
     const inMem = this.sessionIdByConfig.get(key)
-    if (inMem) return
+    if (inMem) return inMem
 
-    const stored = localStorage.getItem(this.storageKey(config))
+    const stored = await this.loadSessionId(key)
     if (stored) {
       this.sessionIdByConfig.set(key, stored)
       this.acpClient['_sessionId'] = stored
-      return
+      return stored
     }
 
     const sessionId = await this.acpClient.createSession('', config)
     this.sessionIdByConfig.set(key, sessionId)
-    localStorage.setItem(this.storageKey(config), sessionId)
+    await this.saveSessionId(key, sessionId)
+    return sessionId
   }
 
   async loadAndReplayHistory(config: ProviderConfig): Promise<{ role: string; content: string }[]> {
-    const stored = localStorage.getItem(this.storageKey(config))
+    const stored = await this.loadSessionId(this.configKey(config))
     if (!stored) return []
 
     await this.acpClient.initialize()
@@ -47,8 +52,13 @@ class ChatRpcClient {
     return `${config.baseURL}|${config.model}`
   }
 
-  private storageKey(config: ProviderConfig): string {
-    return SESSION_KEY_PREFIX + this.configKey(config)
+  private async loadSessionId(key: string): Promise<string | null> {
+    const result = await this.acpClient.getSettings([SESSION_KEY_PREFIX + key])
+    return (result[SESSION_KEY_PREFIX + key] as string) || null
+  }
+
+  private async saveSessionId(key: string, sessionId: string): Promise<void> {
+    await this.acpClient.setSettings({ [SESSION_KEY_PREFIX + key]: sessionId })
   }
 
   private mergeHistory(
@@ -181,6 +191,27 @@ class ChatRpcClient {
   async summarizeSession(sessionId: string, baseURL: string, apiKey: string, model: string): Promise<string> {
     await this.acpClient.initialize()
     return this.acpClient.summarizeSession(sessionId, baseURL, apiKey, model)
+  }
+
+  async listProviders(): Promise<unknown[]> {
+    await this.acpClient.initialize()
+    const result = await this.acpClient.listProviders()
+    return (result as any)?.providers ?? []
+  }
+
+  async saveProviders(providers: unknown[]): Promise<void> {
+    await this.acpClient.initialize()
+    return this.acpClient.saveProviders(providers)
+  }
+
+  async getSettings(keys: string[]): Promise<Record<string, unknown>> {
+    await this.acpClient.initialize()
+    return this.acpClient.getSettings(keys)
+  }
+
+  async setSettings(values: Record<string, unknown>): Promise<void> {
+    await this.acpClient.initialize()
+    return this.acpClient.setSettings(values)
   }
 
 }

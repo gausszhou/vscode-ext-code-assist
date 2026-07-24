@@ -102,11 +102,11 @@ const handleResetClick = async () => {
   await providerStore.resetProviders();
 };
 
-const onConfirmClick = () => {
+const onConfirmClick = async () => {
   if (providers.value.length > 0) {
-    providerStore.setProviders(providers.value);
-    settingStore.setCurrentModelHash(settingStore.currentModelHash);
-    settingStore.setSummaryModelHash(settingStore.summaryModelHash);
+    await providerStore.setProviders(providers.value);
+    await settingStore.setCurrentModelHash(currentModelHash.value);
+    await settingStore.setSummaryModelHash(summaryModelHash.value);
     router.push('/');
   }
 };
