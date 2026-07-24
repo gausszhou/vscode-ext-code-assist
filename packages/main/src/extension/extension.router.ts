@@ -2,6 +2,7 @@ import { ModelService } from './model.service';
 import { ProviderService } from './provider.service';
 import { SettingsService } from './settings.service';
 import { SessionService } from './session.service';
+import { logger } from '../logger/logger.service';
 
 export class ExtensionRouter {
   constructor(
@@ -12,6 +13,7 @@ export class ExtensionRouter {
   ) {}
 
   async handle(method: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
+    logger.info(`ExtensionRouter: ${method}`);
     switch (method) {
       case 'code-assist/models':
         return this.modelService.listModels(params as any);
@@ -34,6 +36,7 @@ export class ExtensionRouter {
       case 'code-assist/settings/set':
         return this.settingsService.set(params as any);
       default:
+        logger.warn(`ExtensionRouter unknown method: ${method}`);
         return Promise.resolve({});
     }
   }

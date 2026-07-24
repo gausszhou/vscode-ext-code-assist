@@ -18,9 +18,11 @@ export class AgentLoop {
   ): Promise<{ stopReason: string }> {
     const session = this.sessionManager.get(sessionId);
     if (!session) {
-      logger.warn(`session/prompt: session not found ${sessionId}`);
+      logger.warn(`AgentLoop execute: session not found ${sessionId}`);
       return { stopReason: 'end_turn' };
     }
+
+    logger.info(`AgentLoop execute start: ${sessionId} model=${session.config.model}`);
 
     session.addMessage({
       role: 'user',
@@ -38,6 +40,7 @@ export class AgentLoop {
         throw new Error('Provider not configured. Please set up API provider first.');
       }
 
+      logger.info(`AgentLoop chatStream: ${sessionId} model=${model}`);
       const stream = await this.openaiService.chatStream({
         baseURL,
         apiKey,
@@ -52,7 +55,10 @@ export class AgentLoop {
         const reader = stream.getReader();
         while (!controller.signal.aborted) {
           const { done, value } = await reader.read();
-          if (done) {break;}
+          if (done) {
+            logger.info(`AgentLoop stream done: ${sessionId}`);
+            break;
+          }
 
           const delta = value.choices?.[0]?.delta;
           if (delta) {
@@ -72,7 +78,7 @@ export class AgentLoop {
       }
 
       if (controller.signal.aborted) {
-        logger.info(`session/prompt cancelled: ${sessionId}`);
+        logger.info(`AgentLoop cancelled: ${sessionId}`);
         if (content) {
           session.addMessage({ role: 'agent', content, model, provider: session.config.provider });
         }
@@ -88,18 +94,18 @@ export class AgentLoop {
         session.addMessage({ role: 'think', content: reasoning, model, provider: session.config.provider });
       }
       await this.sessionManager.getStore().save(session.data);
-      logger.info(`session/prompt complete: ${sessionId} tokens=${content.length}`);
+      logger.info(`AgentLoop complete: ${sessionId} content=${content.length} reasoning=${reasoning.length}`);
 
       this.titleGenerator.generate(sessionId, baseURL, apiKey, model).catch(() => {});
 
       return { stopReason: 'end_turn' };
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
-        logger.info(`session/prompt aborted: ${sessionId}`);
+        logger.info(`AgentLoop aborted: ${sessionId}`);
         return { stopReason: 'cancelled' };
       }
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      logger.error(`session/prompt error: ${sessionId} ${msg}`);
+      logger.error(`AgentLoop error: ${sessionId} ${msg}`);
       session.addMessage({
         role: 'agent',
         content: `Error: ${msg}`,
@@ -118,8 +124,12 @@ export class AgentLoop {
     connection: AgentSideConnection,
   ): Promise<void> {
     const session = this.sessionManager.get(sessionId);
-    if (!session) {return;}
+    if (!session) {
+      logger.warn(`AgentLoop replay: session not found ${sessionId}`);
+      return;
+    }
 
+    logger.info(`AgentLoop replay: ${sessionId} ${session.data.messages.length} msgs`);
     for (const msg of session.data.messages) {
       const updateType = msg.role === 'user'
         ? 'user_message_chunk' as const
@@ -142,8 +152,8 @@ export class AgentLoop {
           content: { type: 'text' as const, text },
         },
       });
-    } catch {
-      // connection closed
+    } catch (err) {
+      logger.warn(`AgentLoop sendChunk failed: ${sessionId} ${err}`);
     }
   }
 }

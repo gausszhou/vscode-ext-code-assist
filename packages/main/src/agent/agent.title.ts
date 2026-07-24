@@ -9,9 +9,13 @@ export class TitleGeneratorService {
   ) {}
 
   async generate(sessionId: string, baseURL: string, apiKey: string, model: string): Promise<void> {
+    logger.info(`TitleGenerator start: ${sessionId}`);
     try {
       const stored = await this.sessionManager.getStore().load(sessionId);
-      if (!stored || stored.messages.length === 0) {return;}
+      if (!stored || stored.messages.length === 0) {
+        logger.warn(`TitleGenerator: no messages for ${sessionId}`);
+        return;
+      }
 
       const resp = await this.openaiService.chat({
         baseURL,
@@ -26,9 +30,12 @@ export class TitleGeneratorService {
       const title = ((resp as any)?.choices?.[0]?.message?.content || '').slice(0, 20);
       if (title) {
         await this.sessionManager.getStore().updateTitle(sessionId, title);
+        logger.info(`TitleGenerator done: ${sessionId} "${title}"`);
+      } else {
+        logger.warn(`TitleGenerator: empty title for ${sessionId}`);
       }
     } catch (err: unknown) {
-      logger.error(`session/summarize error: ${err instanceof Error ? err.message : 'unknown'}`);
+      logger.error(`TitleGenerator error: ${sessionId} ${err instanceof Error ? err.message : 'unknown'}`);
     }
   }
 }
