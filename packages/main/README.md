@@ -13,6 +13,37 @@ VS Code 扩展主程序，提供 AI 代码助手的核心功能。
 - **文本翻译**: 翻译选中文本
 - **文学鉴赏**: 对选中内容进行文学鉴赏
 
+## 架构
+
+```
+src/
+├── extension.ts              — 扩展入口
+├── views/
+│   └── chat-webview.provider.ts
+├── acp/
+│   └── acp.transport.ts      — Webview Stream 适配 + connectServer
+├── agent/
+│   ├── agent.service.ts      — AcpAgent（implements Agent）
+│   ├── agent.loop.ts         — AgentLoop（流式执行循环）
+│   └── agent.title.ts        — 自动标题生成
+├── session/
+│   ├── session.entity.ts
+│   ├── session-store.service.ts
+│   └── session-manager.service.ts
+├── extension/
+│   ├── extension.router.ts
+│   ├── model.service.ts
+│   ├── provider.service.ts
+│   ├── session.service.ts
+│   └── settings.service.ts
+├── logger/
+│   └── logger.service.ts
+└── openai/
+    └── openai.service.ts
+```
+
+依赖方向：`acp/` → `agent/` → `session/ | extension/ | logger/ | openai/`
+
 ## 安装
 
 ```bash
@@ -33,18 +64,10 @@ pnpm run compile
 | `codeAssist.optimization` | 代码优化 |
 | `codeAssist.explanation` | 代码解释 |
 | `codeAssist.comment` | 添加注释 |
-| `codeAssist.upgrade-class` | 升级为 Class 语法 |
-| `codeAssist.upgrade-vue` | 升级 Vue 代码 |
-| `codeAssist.upgrade-react` | 升级 React 代码 |
 | `codeAssist.analysis` | 数据分析 |
 | `codeAssist.translation` | 文本翻译 |
 | `codeAssist.appreciation` | 文学鉴赏 |
 | `codeAssist.add-to-chat` | 添加到聊天 |
-
-## 配置
-
-- `code-assist.deepseek`: DeepSeek 服务器地址（默认: `https://api.deepseek.com`）
-- `code-assist.deepseek_token`: DeepSeek API Token
 
 ## 许可证
 

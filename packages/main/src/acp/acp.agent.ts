@@ -22,8 +22,8 @@ import type {
 import { SessionManagerService } from '../session/session-manager.service';
 import { SessionStoreService } from '../session/session-store.service';
 import { OpenAIService } from '../openai/openai.service';
-import { AgentLoop } from './agent.loop';
-import { TitleGeneratorService } from './agent.title';
+import { AgentLoop } from '../agent/agent.loop';
+import { TitleGeneratorService } from '../agent/agent.title';
 import { ExtensionRouter } from '../extension/extension.router';
 import { ModelService } from '../extension/model.service';
 import { ProviderService } from '../extension/provider.service';
@@ -31,7 +31,7 @@ import { SettingsService } from '../extension/settings.service';
 import { SessionService } from '../extension/session.service';
 import { logger } from '../logger/logger.service';
 
-export class AgentServer implements Agent {
+export class AcpAgent implements Agent {
   private connection: AgentSideConnection | null = null;
 
   private sessionManager: SessionManagerService;
