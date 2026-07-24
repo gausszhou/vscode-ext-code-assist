@@ -1,5 +1,25 @@
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
-import type { SessionData, StoredMessage } from './SessionStore';
+
+export type MessageRole = 'user' | 'agent' | 'think' | 'tool' | 'system';
+
+export interface StoredMessage {
+  role: MessageRole;
+  content: string;
+  model?: string;
+  provider?: string;
+  startTime?: number;
+  loadTime?: number;
+  endTime?: number;
+}
+
+export interface SessionData {
+  id: string;
+  cwd: string;
+  messages: StoredMessage[];
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+}
 
 export interface PromptConfig {
   baseURL: string;
@@ -8,7 +28,7 @@ export interface PromptConfig {
   provider: string;
 }
 
-export class ACPSession {
+export class SessionEntity {
   data: SessionData;
   config: PromptConfig = { baseURL: '', apiKey: '', model: '', provider: '' };
   activeController: AbortController | null = null;
@@ -27,8 +47,8 @@ export class ACPSession {
     }
   }
 
-  static fromData(data: SessionData): ACPSession {
-    const session = new ACPSession(data.id, data.cwd);
+  static fromData(data: SessionData): SessionEntity {
+    const session = new SessionEntity(data.id, data.cwd);
     session.data = { ...data, messages: [...data.messages] };
     return session;
   }
@@ -38,7 +58,6 @@ export class ACPSession {
     this.data.updatedAt = Date.now();
   }
 
-  /** 转成 OpenAI API 需要的消息格式 */
   toCompletionMessages(): ChatCompletionMessageParam[] {
     const result: ChatCompletionMessageParam[] = [];
     for (const m of this.data.messages) {

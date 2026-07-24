@@ -34,11 +34,3 @@ export function createWebviewStream(webview: vscode.Webview): Stream {
 
   return { writable, readable };
 }
-
-export function getWebviewDisposable(stream: Stream): vscode.Disposable {
-  return {
-    dispose() {
-      stream.writable.close();
-    },
-  };
-}

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { ChatWebViewProvider } from './views/ChatWebViewProvider';
-import { logger } from './lib/Logger';
+import { ChatWebViewProvider } from './views/chat-webview.provider';
+import { logger } from './logger/logger.service';
 
 function setupChatWebview(context: vscode.ExtensionContext) {
   const provider = new ChatWebViewProvider(
@@ -43,7 +43,7 @@ function setupChatWebview(context: vscode.ExtensionContext) {
     'add-to-chat',
   ].forEach(addCommand);
 
-  context.subscriptions.push(provider['agentServer'] as any);
+  context.subscriptions.push(provider);
 }
 
 export function activate(context: vscode.ExtensionContext) {

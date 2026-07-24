@@ -1,14 +1,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { AgentServer, createWebviewStream } from '../acp';
-import { logger } from '../lib/Logger';
+import { AgentServer } from '../agent/agent.service';
+import { createWebviewStream } from '../acp/acp.transport';
+import { connectServer } from '../acp/acp.server';
+import { logger } from '../logger/logger.service';
 
 const setting = vscode.workspace.getConfiguration('code-assist');
 
-export class ChatWebViewProvider implements vscode.WebviewViewProvider {
+export class ChatWebViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
   private _view?: vscode.WebviewView;
   private agentServer: AgentServer;
+  private serverDisposable: vscode.Disposable | null = null;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -30,7 +33,7 @@ export class ChatWebViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
     const stream = createWebviewStream(webviewView.webview);
-    this.agentServer.connect(stream);
+    this.serverDisposable = connectServer(this.agentServer, stream);
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
@@ -57,5 +60,9 @@ export class ChatWebViewProvider implements vscode.WebviewViewProvider {
     if (this._view) {
       this._view.webview.postMessage({ type, text });
     }
+  }
+
+  dispose(): void {
+    this.serverDisposable?.dispose();
   }
 }

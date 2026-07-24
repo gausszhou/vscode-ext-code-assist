@@ -1,31 +1,11 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import type { SessionData } from './session.entity';
 
 const INDEX_KEY = 'session-index';
 
-export type MessageRole = 'user' | 'agent' | 'think' | 'tool' | 'system';
-
-export interface StoredMessage {
-  role: MessageRole;
-  content: string;
-  model?: string;
-  provider?: string;
-  startTime?: number;
-  loadTime?: number;
-  endTime?: number;
-}
-
-export interface SessionData {
-  id: string;
-  cwd: string;
-  messages: StoredMessage[];
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-interface SessionIndex {
+export interface SessionIndex {
   id: string;
   cwd: string;
   title: string;
@@ -33,7 +13,7 @@ interface SessionIndex {
   updatedAt: number;
 }
 
-export class SessionStore {
+export class SessionStoreService {
   private sessionsDir: string;
 
   constructor(
@@ -68,7 +48,7 @@ export class SessionStore {
 
   async updateTitle(sessionId: string, title: string): Promise<void> {
     const data = await this.load(sessionId);
-    if (!data) {return;}
+    if (!data) { return; }
     data.title = title;
     data.updatedAt = Date.now();
     await this.save(data);
