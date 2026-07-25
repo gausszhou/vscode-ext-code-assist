@@ -1,45 +1,13 @@
 <template>
-  <div class="markdown-body">
-    <div v-html="renderedContent"></div>
-  </div>
+  <MarkdownRender mode="chat" :content="content" :final="final" />
 </template>
 
 <script setup lang="ts">
-import { cleanHtml, renderMarkdown } from '@/utils/markdown';
-import { onMounted, ref, watch } from 'vue';
+import MarkdownRender from 'markstream-vue';
+import 'markstream-vue/index.css';
 
-const props = defineProps({
-  content: {
-    default: '',
-  },
-  mode:{
-    default: 'thin' as 'thin' | 'full',
-  }
-});
-
-const renderedContent = ref('');
-
-const renderContent = async () => {
-  if (!props.content) {
-    renderedContent.value = '';
-    return;
-  }
-  try {
-    renderedContent.value = await renderMarkdown(props.content, props.mode);  
-  } catch (error) {
-    console.error('Markdown rendering error:', error);
-    renderedContent.value = cleanHtml(props.content);
-  }
-};
-
-watch(
-  () => props.content,
-  () => {
-    renderContent();
-  },
-);
-
-onMounted(() => {
-  renderContent();
+defineProps({
+  content: { default: '' },
+  final: { default: true },
 });
 </script>

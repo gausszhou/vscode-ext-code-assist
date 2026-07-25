@@ -22,7 +22,6 @@ export function createWebviewClientStream(acquireVsCodeApi?: () => any): Stream 
     start(controller) {
       window.addEventListener('message', (event: MessageEvent) => {
         const data = event.data
-        // Only process JSON strings (ACP JSON-RPC messages)
         if (typeof data === 'string' && data.includes('"jsonrpc"')) {
           try {
             controller.enqueue(JSON.parse(data))

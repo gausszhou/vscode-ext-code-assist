@@ -40,7 +40,7 @@
 </template>
 
 <script lang="ts" setup>
-import { chatService } from '@/acp';
+import { agentClient } from '@/agent/agent.client';
 import type { Model } from '@/models/Model';
 import type { Provider } from '@/models/Provider';
 import { sha256 } from '@/utils/hash';
@@ -62,7 +62,7 @@ const getModels = async (provider: Provider) => {
   loading.value = true;
   try {
     await sleep(300);
-    const res = await chatService.models({
+    const res = await agentClient.models({
       baseURL: provider.baseURL,
       apiKey: provider.apiKey,
     });

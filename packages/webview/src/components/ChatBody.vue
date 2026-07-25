@@ -3,8 +3,10 @@
     <template v-for="message in messages" :key="message.id">
       <MessageUser v-if="message.role === 'user'" :message="message" />
       <MessageBot v-if="message.role === 'agent'" :message="message" />
+      <MessageToolCall v-if="message.toolCalls && message.toolCalls.length > 0" :toolCalls="message.toolCalls" />
     </template>
     <MessageStream v-show="loading" :message="currentMessage" />
+    <MessageToolCall v-if="currentMessage.toolCalls && currentMessage.toolCalls.length > 0" :toolCalls="currentMessage.toolCalls" />
     <div ref="footerRef"></div>
   </div>
 </template>
@@ -15,6 +17,7 @@ import { onMounted, ref, watch } from 'vue';
 import MessageUser from './MessageUser.vue';
 import MessageBot from './MessageBot.vue';
 import MessageStream from './MessageStream.vue';
+import MessageToolCall from './MessageToolCall.vue';
 
 const props = defineProps<{
   messages: ChatMessage[];

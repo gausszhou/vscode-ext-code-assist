@@ -26,14 +26,18 @@ export function getTokenCount(text: string = ''): number {
 }
 
 export const getMessageInfoFromMessage = (message: ChatMessage) => {
-  const loadDuration = ((message.loadTime - message.startTime || 1000) / 1000).toFixed(2);
-  const evalDuration = ((message.endTime - message.loadTime || 1000) / 1000).toFixed(2);
-  const totalDuration = ((message.endTime - message.startTime || 1000) / 1000).toFixed(2);
+  const startTime = message.startTime ?? 0;
+  const loadTime = message.loadTime ?? startTime;
+  const endTime = message.endTime ?? startTime;
+  const loadDuration = startTime ? ((loadTime - startTime) / 1000).toFixed(2) : '0.00';
+  const evalDuration = loadTime ? ((endTime - loadTime) / 1000).toFixed(2) : '0.00';
+  const totalDuration = startTime ? ((endTime - startTime) / 1000).toFixed(2) : '0.00';
   const content = (message.reasoning ?? '') + (message.content ?? '');
   const tokens = getTokenCount(content);
-  const tokensSpeed = (tokens / parseFloat(evalDuration)).toFixed(2);
+  const evalSec = parseFloat(evalDuration) || 1;
+  const tokensSpeed = (tokens / evalSec).toFixed(2);
   const chars = content.length;
-  const charsSpeed = (chars / parseFloat(evalDuration)).toFixed(2);
+  const charsSpeed = (chars / evalSec).toFixed(2);
   return {
     provider: message.provider,
     loadDuration,

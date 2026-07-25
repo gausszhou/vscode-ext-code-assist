@@ -25,7 +25,7 @@ import SelectPicker from '@/components/SelectPicker.vue';
 import { CircleCheck, CircleClose, Loading, Refresh } from '@element-plus/icons-vue';
 import type { IStandardItem } from '@/types';
 import { useSettingStore } from '@/stores/useSettingStore';
-import { chatService } from '@/acp';
+import { agentClient } from '@/agent/agent.client';
 import { ref, watch } from 'vue';
 import { sleep } from '@/utils';
 
@@ -60,8 +60,7 @@ const testModel = async (hash) => {
   loading.value = true;
   status.value = 0;
   await sleep(300);
-  chatService
-    .chatRaw({
+  agentClient.chatRaw({
       baseURL,
       apiKey,
       model,

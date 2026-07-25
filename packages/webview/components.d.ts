@@ -8,13 +8,24 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ChatBody: typeof import('./src/components/ChatBody.vue')['default']
+    ChatFooter: typeof import('./src/components/ChatFooter.vue')['default']
+    ChatHeader: typeof import('./src/components/ChatHeader.vue')['default']
     ElCollapse: typeof import('element-plus/es')['ElCollapse']
     ElCollapseItem: typeof import('element-plus/es')['ElCollapseItem']
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     Markdown: typeof import('./src/components/Markdown.vue')['default']
+    MessageBot: typeof import('./src/components/MessageBot.vue')['default']
+    MessageInfo: typeof import('./src/components/MessageInfo.vue')['default']
+    MessageStream: typeof import('./src/components/MessageStream.vue')['default']
+    MessageToolCall: typeof import('./src/components/MessageToolCall.vue')['default']
+    MessageUser: typeof import('./src/components/MessageUser.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SelectPicker: typeof import('./src/components/SelectPicker.vue')['default']
+    SessionList: typeof import('./src/components/SessionList.vue')['default']
+    SettingModelItem: typeof import('./src/components/SettingModelItem.vue')['default']
+    SettingProviderItem: typeof import('./src/components/SettingProviderItem.vue')['default']
   }
 }

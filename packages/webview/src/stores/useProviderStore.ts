@@ -1,14 +1,14 @@
 import { createDefaultProvider, Provider } from '@/models/Provider';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { chatService } from '@/acp';
+import { agentClient } from '@/agent/agent.client';
 
 export const useProviderStore = defineStore('provider', () => {
   const providers = ref<Provider[]>([]);
 
   const setProviders = async (value: Provider[]) => {
     providers.value = value;
-    await chatService.saveProviders(value);
+    await agentClient.saveProviders(value);
   };
 
   const resetProviders = async () => {
@@ -16,7 +16,7 @@ export const useProviderStore = defineStore('provider', () => {
   };
 
   const init = async () => {
-    const result = await chatService.listProviders();
+    const result = await agentClient.listProviders();
     if (result && result.length > 0) {
       providers.value = result as Provider[];
     } else {

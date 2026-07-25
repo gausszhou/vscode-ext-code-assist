@@ -17,3 +17,13 @@ export interface IChatChunkMerge {
   endTime?: number;
 }
 
+export interface IToolCallInfo {
+  name: string;
+  arguments: string;
+}
+
+export interface IToolResult {
+  toolName: string;
+  result: string;
+}
+

@@ -4,16 +4,13 @@
       <span>You</span>
     </div>
     <div class="message-content">
-      <div class="markdown-content">
-        <Markdown :content="message.content" />
-      </div>
+      <div class="plain-content">{{ message.content }}</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ChatMessage } from '@/models/Message';
-import Markdown from '@/components/Markdown.vue';
 
 const props = defineProps({
   message: {

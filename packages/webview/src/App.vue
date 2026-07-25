@@ -2,12 +2,10 @@
 import { onMounted } from 'vue';
 import { useProviderStore } from '@/stores/useProviderStore';
 import { useSettingStore } from '@/stores/useSettingStore';
-import { useSession } from '@/stores/useSession';
 
 onMounted(() => {
   useProviderStore().init();
   useSettingStore().init();
-  useSession().initSession();
 });
 </script>
 

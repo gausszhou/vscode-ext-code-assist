@@ -1,28 +1,43 @@
 <template>
   <div class="chat-container" :class="{ 'has-code': promptCode }">
-    <ChatHeader :messages="currentMessageList" :loading="loading" @update:conversationId="handleConversationChange" />
-    <ChatBody :messages="currentMessageList" :promptCode="promptCode" :currentMessage="currentMessage"
-      :loading="loading" />
-    <ChatFooter v-model="prompt" :promptCode="promptCode" :loading="loading" @code="onCodeButtonCLick"
-      @send="onSendButtonClick" />
+    <SessionList
+      :active-id="conversationId"
+      :visible="showSessionList"
+      @select="handleSessionSelect"
+      @close="showSessionList = false"
+    />
+    <div class="chat-main">
+      <ChatHeader
+        :title="conversationTitle"
+        :sessions-open="showSessionList"
+        @toggle-sessions="showSessionList = !showSessionList"
+      />
+      <ChatBody :messages="currentMessageList" :promptCode="promptCode" :currentMessage="currentMessage"
+        :loading="loading" />
+      <div v-if="errorMessage" class="chat-error" @click="errorMessage = ''">
+        <el-icon><WarningFilled /></el-icon>
+        <span>{{ errorMessage }}</span>
+        <el-icon class="chat-error-close"><Close /></el-icon>
+      </div>
+      <ChatFooter v-model="prompt" :promptCode="promptCode" :loading="loading" @code="onCodeButtonCLick"
+        @send="onSendButtonClick" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
-import { chatService } from '../acp';
+import { agentClient } from '../agent/agent.client';
 import { ChatMessage } from '../models/Message';
 
-import ChatBody from './components/ChatBody.vue';
-import ChatFooter from './components/ChatFooter.vue';
-import ChatHeader from './components/ChatHeader.vue';
+import ChatBody from '@/components/ChatBody.vue';
+import ChatFooter from '@/components/ChatFooter.vue';
+import ChatHeader from '@/components/ChatHeader.vue';
+import SessionList from '@/components/SessionList.vue';
 import { useSettingStore } from '@/stores/useSettingStore';
-import { useSession } from '@/stores/useSession';
-import { QueueRender } from '@/utils/QueueRender';
 import type { IChatChunkMerge } from '@/types';
 
 const settingStore = useSettingStore();
-const session = useSession();
 
 // 流式消息内存缓存
 const latestMessageMap = new Map<string, ChatMessage>();
@@ -40,8 +55,13 @@ function deleteLatestMessage(convId: string) {
   latestMessageMap.delete(convId);
 }
 
-const currentMessage = ref<ChatMessage>(getLatestMessage(session.conversationId.value));
+const conversationId = ref('');
+const conversationTitle = ref('');
+const errorMessage = ref('');
+
+const currentMessage = ref<ChatMessage>(getLatestMessage(conversationId.value));
 const currentMessageList = ref<ChatMessage[]>([]);
+const showSessionList = ref(false);
 const loading = ref(false);
 const prompt = ref('');
 const promptCode = ref('');
@@ -51,17 +71,50 @@ function toApiMessages(messages: ChatMessage[]): { role: string; content: string
   return messages.map((m) => ({ role: m.role, content: m.content }));
 }
 
+function toStoreMessages(messages: ChatMessage[]) {
+  return messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+    model: m.model || undefined,
+    provider: m.provider || undefined,
+    startTime: m.startTime,
+    loadTime: m.loadTime,
+    endTime: m.endTime,
+    tool_calls: m.toolCalls.length > 0 ? m.toolCalls.map(tc => ({
+      id: tc.id,
+      type: 'function',
+      function: { name: tc.name, arguments: tc.arguments },
+    })) : undefined,
+  }));
+}
+
+function fromStoreMessage(m: any, convId: string): ChatMessage {
+  const msg = new ChatMessage(m.role, convId);
+  msg.content = m.content || '';
+  msg.model = m.model || '';
+  msg.provider = m.provider || '';
+  msg.startTime = m.startTime;
+  msg.loadTime = m.loadTime;
+  msg.endTime = m.endTime;
+  if (m.tool_calls) {
+    msg.toolCalls = m.tool_calls.map((tc: any) => ({
+      id: tc.id || tc.function?.name || '',
+      name: tc.function?.name || tc.name || '',
+      arguments: tc.function?.arguments || tc.arguments || '',
+      result: tc.result,
+      status: 'completed',
+    }));
+  }
+  return msg;
+}
+
 // 加载消息
 const loadMessages = async (convId?: string) => {
-  const id = convId || session.conversationId.value;
+  const id = convId || conversationId.value;
   if (!id) {currentMessageList.value = []; return;}
   currentMessage.value = getLatestMessage(id);
-  const data = await chatService.getSessionMessages(id);
-  currentMessageList.value = data.messages.map((m: any) => {
-    const msg = new ChatMessage(m.role, id);
-    msg.content = m.content;
-    return msg;
-  });
+  const data = await agentClient.getSessionMessages(id);
+  currentMessageList.value = data.messages.map((m: any) => fromStoreMessage(m, id));
 };
 
 // 处理窗口消息
@@ -109,44 +162,33 @@ const handleWindowMessage = (e: MessageEvent) => {
   }
 };
 
-let queueRender: QueueRender | null = null;
-
 onUnmounted(() => {
   // 不取消请求——让 Agent 在后台继续处理，重开 webview 后通过 session/load 恢复
-  queueRender?.dispose();
 });
 
-const enqueue = async (value: IChatChunkMerge) => {
-  queueRender?.queueAsync(value, (result) => {
-    switch (result.type) {
-      case 'content':
-      case 'reasoning':
-        handleChating(result);
-        break;
-      case 'end':
-        {
-          handleChatEnd(result);
-          queueRender?.dispose();
-        }
-        break;
-      default:
-        break;
-    }
-  });
+const enqueue = (value: IChatChunkMerge) => {
+  switch (value.type) {
+    case 'content':
+    case 'reasoning':
+      handleChating(value);
+      break;
+    case 'end':
+      handleChatEnd(value);
+      break;
+  }
 };
 
 // 等待 AI 回复
 const handleChatRequest = async (messages: ChatMessage[]) => {
   loading.value = true;
   abortController = new AbortController();
-  queueRender = new QueueRender();
   const { baseURL, apiKey, model, provider } = settingStore.getModelParams(settingStore.currentModelHash);
-  let currentConversationId = session.conversationId.value;
+  let currentConversationId = conversationId.value;
 
-  // 确保 ACP session 已创建
-  if (!currentConversationId) {
-    currentConversationId = await chatService.initSession({ baseURL, apiKey, model, provider });
-    await session.linkSessionId(currentConversationId);
+  if (!currentConversationId && agentClient.sessionId) {
+    currentConversationId = agentClient.sessionId;
+    conversationId.value = currentConversationId;
+    agentClient.setSessionId(currentConversationId);
   }
 
   deleteLatestMessage(currentConversationId);
@@ -160,13 +202,40 @@ const handleChatRequest = async (messages: ChatMessage[]) => {
     const endTime = Date.now();
     enqueue({ conversationId: currentConversationId, type: 'content', data: text, startTime, loadTime, endTime });
   };
+  const currentConvId = currentConversationId;
+  const onToolCall = (toolCalls: Array<{ name: string; arguments: string }>) => {
+    const botMessage = getLatestMessage(currentConvId);
+    for (const tc of toolCalls) {
+      botMessage.toolCalls.push({
+        id: `${tc.name}_${Date.now()}`,
+        name: tc.name,
+        arguments: tc.arguments,
+        status: 'running',
+      });
+    }
+    currentMessage.value = structuredClone(botMessage);
+  };
+  const onToolResult = (toolName: string, result: string) => {
+    const botMessage = getLatestMessage(currentConvId);
+    const tc = botMessage.toolCalls.find(t => t.name === toolName && t.status === 'running');
+    if (tc) {
+      tc.status = 'completed';
+      tc.result = result;
+    }
+    currentMessage.value = structuredClone(botMessage);
+  };
   const promptText = toApiMessages(messages).map(m => m.content).join('\n');
+  const config = { baseURL, apiKey, model, provider };
   try {
-    await chatService.sendPrompt(currentConversationId, promptText, onChunk, abortController.signal);
+    await agentClient.sendPrompt(promptText, config, onChunk, abortController.signal, onToolCall, onToolResult);
     const endTime = Date.now();
+    if (!conversationId.value && agentClient.sessionId) {
+      conversationId.value = agentClient.sessionId;
+      agentClient.setSessionId(agentClient.sessionId);
+      currentConversationId = agentClient.sessionId;
+    }
     enqueue({ conversationId: currentConversationId, type: 'end', startTime, loadTime, endTime });
   } catch (error: any) {
-    queueRender?.dispose();
     if (!loadTime) {loadTime = Date.now();}
     const endTime = Date.now();
     enqueue({ conversationId: currentConversationId, type: 'end', startTime, loadTime, endTime });
@@ -183,9 +252,9 @@ const handleChating = (result: IChatChunkMerge) => {
   if (result.type === 'content') {
     botMessage.content += result.data || '';
   }
-  if (result.startTime !== undefined) botMessage.startTime = result.startTime;
-  if (result.loadTime !== undefined) botMessage.loadTime = result.loadTime;
-  if (result.endTime !== undefined) botMessage.endTime = result.endTime;
+  if (result.startTime !== undefined) {botMessage.startTime = result.startTime;}
+  if (result.loadTime !== undefined) {botMessage.loadTime = result.loadTime;}
+  if (result.endTime !== undefined) {botMessage.endTime = result.endTime;}
   if (currentMessage.value.conversationId === result.conversationId) {
     currentMessage.value = structuredClone(botMessage);
   }
@@ -194,18 +263,18 @@ const handleChating = (result: IChatChunkMerge) => {
 // AI 结束回答
 const handleChatEnd = async (result: IChatChunkMerge) => {
   const botMessage = getLatestMessage(result.conversationId);
-  if (result.startTime !== undefined) botMessage.startTime = result.startTime;
-  if (result.loadTime !== undefined) botMessage.loadTime = result.loadTime;
-  if (result.endTime !== undefined) botMessage.endTime = result.endTime;
-  // 保存到 Agent
-  const msgList = [...currentMessageList.value, botMessage];
-  await chatService.saveSession({
-    sessionId: result.conversationId,
-    messages: msgList.map((m) => ({ role: m.role, content: m.content })),
-  });
-  // 更新当前页面消息列表
-  if (session.conversationId.value === result.conversationId) {
-    currentMessageList.value = msgList;
+  if (result.startTime !== undefined) {botMessage.startTime = result.startTime;}
+  if (result.loadTime !== undefined) {botMessage.loadTime = result.loadTime;}
+  if (result.endTime !== undefined) {botMessage.endTime = result.endTime;}
+  if (result.conversationId) {
+    const msgList = [...currentMessageList.value, botMessage];
+    await agentClient.saveSession({
+      sessionId: result.conversationId,
+      messages: toStoreMessages(msgList),
+    });
+    if (conversationId.value === result.conversationId) {
+      currentMessageList.value = msgList;
+    }
   }
   loading.value = false;
   deleteLatestMessage(result.conversationId);
@@ -354,7 +423,7 @@ ${prompt.value}
 
 // 发送消息
 const onSendButtonClick = async () => {
-  const currentConversationId = session.conversationId.value;
+  const currentConversationId = conversationId.value;
   const content = `${prompt.value}
 ${promptCode.value}
 `;
@@ -373,29 +442,28 @@ ${promptCode.value}
   currentMessageList.value = [...currentMessageList.value, userMessage];
   const requestMessages = [...currentMessageList.value];
   // 保存用户消息到 Agent
-  chatService.saveSession({
+  agentClient.saveSession({
     sessionId: currentConversationId,
-    messages: currentMessageList.value.map((m) => ({ role: m.role, content: m.content })),
+    messages: toStoreMessages(currentMessageList.value),
   }).catch(() => {});
   handleChatRequest(requestMessages);
 };
 
 // 会话变更处理
-const handleConversationChange = () => {
+const handleSessionSelect = async (id: string) => {
+  showSessionList.value = false;
+  conversationId.value = id;
+  agentClient.setSessionId(id);
   currentMessageList.value = [];
-  loadMessages();
+  await loadMessages(id);
 };
 
 const restoreACPHistoryIfNeeded = async () => {
-  const convId = session.conversationId.value;
-  if (!convId) return;
-  const data = await chatService.getSessionMessages(convId);
+  const convId = conversationId.value;
+  if (!convId) {return;}
+  const data = await agentClient.getSessionMessages(convId);
   if (data.messages.length > 0) {
-    currentMessageList.value = data.messages.map((m: any) => {
-      const msg = new ChatMessage(m.role, convId);
-      msg.content = m.content;
-      return msg;
-    });
+    currentMessageList.value = data.messages.map((m: any) => fromStoreMessage(m, convId));
   }
 };
 
@@ -403,8 +471,11 @@ onMounted(async () => {
   window.addEventListener('message', handleWindowMessage);
 
   await restoreACPHistoryIfNeeded();
-
   await loadMessages();
+
+  if (conversationId.value) {
+    agentClient.setSessionId(conversationId.value);
+  }
 });
 
 onUnmounted(() => {
@@ -415,12 +486,19 @@ onUnmounted(() => {
 <style>
 .chat-container {
   display: flex;
-  flex-direction: column;
   height: 100%;
   min-width: 400px;
   max-width: 960px;
   margin: 0 auto;
   max-height: 100vh;
-  padding: 0 4px;
+  position: relative;
+}
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 </style>

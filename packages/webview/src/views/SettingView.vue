@@ -3,8 +3,8 @@
     <div class="setting-header">
       <h2 class="setting-header-title">Settings</h2>
       <div class="header-icon-group right">
-        <el-icon class="header-icon" style="transform: rotate(90deg)" @click="$router.push('/')">
-          <Download />
+        <el-icon class="header-icon" @click="$router.push('/')">
+          <Back />
         </el-icon>
       </div>
     </div>
@@ -50,10 +50,11 @@
 </template>
 
 <script lang="ts" setup>
-import ProviderItem from './components/SettingProviderItem.vue';
-import SettingModelItem from './components/SettingModelItem.vue';
+import ProviderItem from '@/components/SettingProviderItem.vue';
+import SettingModelItem from '@/components/SettingModelItem.vue';
 import { useSettingStore } from '@/stores/useSettingStore';
 import { useProviderStore } from '@/stores/useProviderStore';
+import { Back } from '@element-plus/icons-vue';
 import type { IStandardItem } from '@/types';
 import { useRouter } from 'vue-router';
 import { computed, ref, toRef } from 'vue';

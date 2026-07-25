@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useProviderStore } from './useProviderStore';
-import { chatService } from '@/acp';
+import { agentClient } from '@/agent/agent.client';
 
 export const useSettingStore = defineStore('setting', () => {
   const providerStore = useProviderStore();
@@ -10,12 +10,12 @@ export const useSettingStore = defineStore('setting', () => {
 
   const setCurrentModelHash = async (value: string) => {
     currentModelHash.value = value;
-    await chatService.setSettings({ currentModelHash: value });
+    await agentClient.setSettings({ currentModelHash: value });
   };
 
   const setSummaryModelHash = async (value: string) => {
     summaryModelHash.value = value;
-    await chatService.setSettings({ summaryModelHash: value });
+    await agentClient.setSettings({ summaryModelHash: value });
   };
 
   const getModelParams = (modelHash: string) => {
@@ -40,7 +40,7 @@ export const useSettingStore = defineStore('setting', () => {
   };
 
   const init = async () => {
-    const settings = await chatService.getSettings(['currentModelHash', 'summaryModelHash']);
+    const settings = await agentClient.getSettings(['currentModelHash', 'summaryModelHash']);
     if (settings.currentModelHash) currentModelHash.value = settings.currentModelHash as string;
     if (settings.summaryModelHash) summaryModelHash.value = settings.summaryModelHash as string;
   };
