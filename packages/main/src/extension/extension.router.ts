@@ -26,7 +26,7 @@ export class ExtensionRouter {
       case 'code-assist/session/save':
         return this.sessionService.save(params as any);
       case 'code-assist/session/summarize':
-        return this.modelService.listModels(params as any);
+        return this.sessionService.summarize(params as any);
       case 'code-assist/providers/list':
         return this.providerService.list();
       case 'code-assist/providers/save':

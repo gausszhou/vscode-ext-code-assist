@@ -2,6 +2,12 @@ import type { ChatCompletionMessageParam } from 'openai/resources/chat/completio
 
 export type MessageRole = 'user' | 'agent' | 'think' | 'tool' | 'system';
 
+export interface ToolCallData {
+  id: string;
+  type: string;
+  function: { name: string; arguments: string };
+}
+
 export interface StoredMessage {
   role: MessageRole;
   content: string;
@@ -10,6 +16,8 @@ export interface StoredMessage {
   startTime?: number;
   loadTime?: number;
   endTime?: number;
+  tool_call_id?: string;
+  tool_calls?: ToolCallData[];
 }
 
 export interface SessionData {
@@ -61,10 +69,20 @@ export class SessionEntity {
   toCompletionMessages(): ChatCompletionMessageParam[] {
     const result: ChatCompletionMessageParam[] = [];
     for (const m of this.data.messages) {
-      if (m.role === 'agent' || m.role === 'think') {
+      if (m.role === 'agent') {
+        const msg: ChatCompletionMessageParam = { role: 'assistant', content: m.content || null };
+        if (m.tool_calls && m.tool_calls.length > 0) {
+          msg.tool_calls = m.tool_calls.map(tc => ({
+            id: tc.id,
+            type: 'function' as const,
+            function: { name: tc.function.name, arguments: tc.function.arguments },
+          }));
+        }
+        result.push(msg);
+      } else if (m.role === 'think') {
         result.push({ role: 'assistant', content: m.content });
       } else if (m.role === 'tool') {
-        result.push({ role: 'tool', content: m.content, tool_call_id: '' });
+        result.push({ role: 'tool', content: m.content, tool_call_id: m.tool_call_id || '' });
       } else {
         result.push({ role: m.role as 'user' | 'system', content: m.content });
       }

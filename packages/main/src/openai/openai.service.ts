@@ -3,6 +3,7 @@ import { logger } from '../logger/logger.service';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionChunk,
+  ChatCompletionTool,
   Model,
 } from 'openai/resources/index';
 
@@ -29,8 +30,20 @@ export class OpenAIService {
     });
   }
 
+  async chatWithTools(
+    config: ChatConfig & { messages: ChatCompletionMessageParam[]; tools?: ChatCompletionTool[] },
+  ) {
+    logger.info(`OpenAI chatWithTools: ${config.model} ${config.messages.length} msgs tools=${config.tools?.length ?? 0}`);
+    const openai = new OpenAI({ baseURL: config.baseURL, apiKey: config.apiKey });
+    return openai.chat.completions.create({
+      model: config.model,
+      messages: config.messages,
+      tools: config.tools,
+    });
+  }
+
   async chatStream(
-    config: ChatConfig & { messages: ChatCompletionMessageParam[] },
+    config: ChatConfig & { messages: ChatCompletionMessageParam[]; tools?: ChatCompletionTool[] },
   ): Promise<ReadableStream<ChatCompletionChunk>> {
     logger.info(`OpenAI chatStream: ${config.model} ${config.messages.length} msgs`);
     const openai = new OpenAI({ baseURL: config.baseURL, apiKey: config.apiKey });
@@ -38,6 +51,7 @@ export class OpenAIService {
       model: config.model,
       messages: config.messages,
       stream: true,
+      tools: config.tools,
     });
     return stream.toReadableStream();
   }

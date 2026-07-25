@@ -53,7 +53,7 @@ export class AcpAgent implements Agent {
     const modelService = new ModelService(openaiService);
     const providerService = new ProviderService(secrets);
     const settingsService = new SettingsService(storage);
-    const sessionService = new SessionService(this.sessionManager);
+    const sessionService = new SessionService(this.sessionManager, openaiService);
     this.extensionRouter = new ExtensionRouter(
       modelService,
       providerService,
@@ -148,6 +148,7 @@ export class AcpAgent implements Agent {
         sessionId: s.id,
         cwd: s.cwd,
         title: s.title,
+        createdAt: new Date(s.createdAt).toISOString(),
         updatedAt: new Date(s.updatedAt).toISOString(),
       })),
     });
